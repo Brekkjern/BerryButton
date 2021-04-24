@@ -1,0 +1,15 @@
+[Unit]
+Description=BerryButton gpio listener
+After=pigpiod.service
+Requires=pigpiod.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+User=root
+EnvironmentFile=/path/to/environmentfile
+ExecStart=/path/to/berrybutton.py
+
+[Install]
+WantedBy=multi-user.target
