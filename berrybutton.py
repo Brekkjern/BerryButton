@@ -116,11 +116,13 @@ def on_timeout(command: str):
     help="Pin to listen for button signal",
 )
 def main(command: str, endcommand: str, wait: int, reset: bool, verbose: int, reset_pin: int, button_pin: int):
-    f"""Runs a command when the button connected to pin {TRIGGER_BUTTON_PIN} is pressed.
+    """Runs a command when the button connected to pin 5 is pressed.
     If you enter a second command it will be run after a configureable amount of time after the first command.
+    The pin can be configured with the --button-pin option.
     
-    Also restarts the machine if button connected to pin {RESET_BUTTON_PIN} is pressed.
+    Also restarts the machine if button connected to pin 6 is pressed.
     This feature is enabled by using the --allow-reset flag.
+    The pin can be configured with the --reset-pin option.
     """
 
     logger.setLevel(logging.WARNING - (verbose * 10))
