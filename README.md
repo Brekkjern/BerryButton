@@ -1,5 +1,6 @@
 # BerryButton
 
+```
 Usage: berrybutton.py [OPTIONS] COMMAND [ENDCOMMAND]
 
   Runs a command when the button connected to pin 5 is pressed. If you enter
@@ -23,5 +24,5 @@ Options:
   --reset-pin INTEGER RANGE   Pin to listen for reset signal
   --button-pin INTEGER RANGE  Pin to listen for button signal
   --help                      Show this message and exit.
+```
 
-Process finished with exit code 0
