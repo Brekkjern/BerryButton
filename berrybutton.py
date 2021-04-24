@@ -9,12 +9,43 @@ import time
 import click
 from functools import partial
 import logging
+from typing import TypedDict, Optional
 
 TRIGGER_BUTTON_PIN = 5
 RESET_BUTTON_PIN = 6
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARN)
+
+
+class ConfigDict(TypedDict):
+    """A dict representing all the values passed from running the command through click.
+
+    :param command: The command to run when the button is pressed.
+    :type command: str
+    :param endcommand: The command to run when the timeout has passed.
+    :type endcommand: str, None
+    :param wait: The time to wait before running the endcommand if an endcommand is passed.
+    :type wait: int in seconds
+    :param reset: Option to allow resetting the device.
+    :type reset: bool
+    :param verbose: Log level to use. 0 = WARNING, 1 = INFO, 2 = DEBUG.
+    :type verbose: int
+    :param reset_pin: GPIO pin for resetting the device.
+    :type reset_pin: int
+    :param button_pin: GPIO pin for the button.
+    :type button_pin: int
+    :param quiet: Disable script output.
+    :type quiet: bool
+    """
+    command: str
+    endcommand: Optional[str]
+    wait: int
+    reset: bool
+    verbose: int
+    reset_pin: int
+    button_pin: int
+    quiet: bool
 
 
 def on_reset_button():
@@ -26,37 +57,39 @@ def on_reset_button():
         logger.error("Could not reboot machine:", sys.exc_info()[0])
 
 
-def on_trigger(script: str, timeout_command: str, wait: int):
+def on_trigger(config: ConfigDict):
     """Runs a command
 
     Optionally runs another command after a timeout.
     """
     logger.info("Running command...")
     try:
-        output = subprocess.run([script], capture_output=True)
+        output = subprocess.run([config["command"]], capture_output=True)
     except:
         logger.error("Error running command:", sys.exc_info()[0])
     else:
         if output.returncode:
             logger.warning("Command exited with error code %s", output.returncode)
-        logger.info("Command output:\n%s", output.stdout.decode("utf-8"))
-    if timeout_command is not None:
-        logger.debug("Waiting %s seconds", wait)
-        time.sleep(wait)
-        on_timeout(timeout_command)
+        if not config["quiet"]:
+            logger.info("Command output:\n%s", output.stdout.decode("utf-8"))
+    if config["endcommand"] is not None:
+        logger.debug("Waiting %s seconds before running timeout command", config["wait"])
+        time.sleep(config["wait"])
+        on_timeout(config)
 
 
-def on_timeout(command: str):
+def on_timeout(config: ConfigDict):
     """Runs a command"""
-    logger.debug("Timeout. Calling end command.")
+    logger.debug("Timeout. Calling end command...")
     try:
-        output = subprocess.run([command], capture_output=True)
+        output = subprocess.run([config["endcommand"]], capture_output=True)
     except:
         logger.error("Error running timeout command:", sys.exc_info()[0])
     else:
         if output.returncode:
             logger.warning("Timeout command exited with error code %s", output.returncode)
-        logger.info("Command output:\n%s", output.stdout)
+        if not config["quiet"]:
+            logger.info("Command output:\n%s", output.stdout.decode("utf-8"))
 
 
 @click.command()
@@ -92,6 +125,7 @@ def on_timeout(command: str):
 @click.option(
     "-v",
     "--verbose",
+    default=0,
     count=True,
     help="Defaults to warnings only. One v is info. Two v is debug.",
 )
@@ -115,7 +149,15 @@ def on_timeout(command: str):
     default=TRIGGER_BUTTON_PIN,
     help="Pin to listen for button signal",
 )
-def main(command: str, endcommand: str, wait: int, reset: bool, verbose: int, reset_pin: int, button_pin: int):
+@click.option(
+    "-q",
+    "--quiet",
+    is_flag=True,
+    default=False,
+    envvar="quiet",
+    help="Disables logging of command outputs",
+)
+def main(**kwargs: ConfigDict):
     """Runs a command when the button connected to pin 5 is pressed.
     If you enter a second command it will be run after a configureable amount of time after the first command.
     The pin can be configured with the --button-pin option.
@@ -124,18 +166,18 @@ def main(command: str, endcommand: str, wait: int, reset: bool, verbose: int, re
     This feature is enabled by using the --allow-reset flag.
     The pin can be configured with the --reset-pin option.
     """
-
-    logger.setLevel(logging.WARNING - (verbose * 10))
+    config = ConfigDict(**kwargs)  # Hack to get around typing limitations
+    logger.setLevel(logging.WARNING - (config["verbose"] * 10))
 
     logger.info("Setting up...")
-    if reset:
-        logging.info("Enabling reset button on pin %s", reset_pin)
-        reset_button = gpiozero.Button(reset_pin, bounce_time=0.1)
+    if kwargs["reset"]:
+        logging.info("Enabling reset button on pin %s", config["reset_pin"])
+        reset_button = gpiozero.Button(config["reset_pin"], bounce_time=0.1)
         reset_button.when_activated = on_reset_button
 
-    logging.info("Enabling button on pin %s", button_pin)
-    script_button = gpiozero.Button(button_pin, bounce_time=0.1)
-    script_button.when_activated = partial(on_trigger, command, endcommand, wait)
+    logging.info("Enabling button on pin %s", kwargs["button_pin"])
+    script_button = gpiozero.Button(config["button_pin"], bounce_time=0.1)
+    script_button.when_activated = partial(on_trigger, config)
 
     logger.info("Ready. Waiting for button presses.")
     try:

@@ -1,5 +1,6 @@
 # BerryButton
 
+## Usage
 ```
 Usage: berrybutton.py [OPTIONS] COMMAND [ENDCOMMAND]
 
@@ -23,6 +24,14 @@ Options:
 
   --reset-pin INTEGER RANGE   Pin to listen for reset signal
   --button-pin INTEGER RANGE  Pin to listen for button signal
+  -q, --quiet                 Disables logging of command outputs
   --help                      Show this message and exit.
 ```
+## Installation
+This is a standalone Python script. The required packages are listed in the `requirements.txt` file.
+Run the following to install those packages:
+```bash
+python -m pip install -r requirements.txt
+```
 
+To configure this script to run as a service, see the `berrybutton.service` file.
